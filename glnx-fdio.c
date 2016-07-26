@@ -660,11 +660,18 @@ glnx_file_replace_contents_with_perms_at (int                   dfd,
 {
   gboolean ret = FALSE;
   int r;
-  /* We use the /proc/self trick as there's no mkostemp_at() yet */
-  g_autofree char *tmppath = g_strdup_printf ("/proc/self/fd/%d/.tmpXXXXXX", dfd);
+  g_autofree char *tmppath = NULL;
   glnx_fd_close int fd = -1;
 
   dfd = glnx_dirfd_canonicalize (dfd);
+
+  if (dfd == AT_FDCWD)
+    {
+      g_autofree char *dir = g_path_get_dirname (subpath);
+      tmppath = g_strdup_printf ("%s/.tmpXXXXXX", dir);
+    }
+  else /* We use the /proc/self trick as there's no mkostemp_at() yet */
+    tmppath = g_strdup_printf ("/proc/self/fd/%d/.tmpXXXXXX", dfd);
 
   if ((fd = g_mkstemp_full (tmppath, O_WRONLY | O_CLOEXEC,
                             mode == (mode_t) -1 ? 0666 : mode)) == -1)
